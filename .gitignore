@@ -6,4 +6,5 @@
 __pycache__
 /data/
 agent/tests/output
-
+node_modules/
+package-lock.json
