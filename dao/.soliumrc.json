@@ -1,9 +1,13 @@
 {
   "extends": "solium:all",
+  "plugins": [
+    "security"
+  ],
   "rules": {
     "indentation": ["error", 4],
     "quotes": ["error", "double"],
-    "arg-overflow": "off",
-    "blank-lines": "off"
+    "arg-overflow": "warning",
+    "blank-lines": "warning",
+    "security/no-block-members": "warning"
   }
 }
