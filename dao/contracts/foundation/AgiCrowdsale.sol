@@ -14,6 +14,8 @@ import "zeppelin-solidity/contracts/crowdsale/RefundVault.sol";
  * on a token per ETH rate. Funds collected are forwarded to a wallet
  * as they arrive.
  */
+
+
 contract AgiCrowdsale is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
 
@@ -33,7 +35,7 @@ contract AgiCrowdsale is Ownable, ReentrancyGuard {
     uint256 public weiRaised;
 
     mapping(address => bool) public whitelist;
-    
+
     event TokenPurchase(address indexed purchaser, address indexed beneficiary, uint256 value, uint256 amount);
     event TokenRelease(address indexed beneficiary, uint256 amount);
     event TokenRefund(address indexed refundee, uint256 amount);
@@ -41,14 +43,15 @@ contract AgiCrowdsale is Ownable, ReentrancyGuard {
     event Finalized();
 
     function AgiCrowdsale(
-        address _token, 
+        address _token,
         address _wallet,
         uint256 _startTime,
         uint256 _endTime,
         uint256 _rate,
         uint256 _cap,
         uint256 _goal
-    ) {
+    )  public
+    {
         require(_startTime >= getBlockTimestamp());
         require(_endTime >= _startTime);
         require(_rate > 0);
@@ -67,51 +70,8 @@ contract AgiCrowdsale is Ownable, ReentrancyGuard {
     }
 
     // fallback function can be used to buy tokens
-    function () payable {
+    function () payable  public {
         buyTokens(msg.sender);
-    }
-
-    //low level function to buy tokens
-    function buyTokens(address beneficiary) internal {
-        require(beneficiary != 0x0);
-        require(whitelist[beneficiary]);
-        require(validPurchase());
-
-        //derive amount in wei to buy 
-        uint256 weiAmount = msg.value;
-        //check if there is enough funds 
-        uint256 remainingToFund = cap.sub(weiRaised);
-        if (weiAmount > remainingToFund) {
-            weiAmount = remainingToFund;
-        }
-        uint256 weiToReturn = msg.value.sub(weiAmount);
-        //derive how many tokens
-        uint256 tokens = getTokens(weiAmount);
-        //update the state of weiRaised
-        weiRaised = weiRaised.add(weiAmount);
-
-       //Forward funs to the vault 
-        forwardFunds();
-        //refund if the contribution exceed the cap
-        if (weiToReturn > 0) {
-            beneficiary.transfer(weiToReturn);
-            TokenRefund(beneficiary, weiToReturn);
-        }
-
-        
-        //Trigger the event of TokenPurchase
-        TokenPurchase(
-            msg.sender,
-            beneficiary,
-            weiAmount,
-            tokens
-        );
-        token.transferTokens(beneficiary,tokens);
-        
-    }
-
-    function getTokens(uint256 amount) internal constant returns (uint256) {
-        return amount.mul(rate).div(WEI_TO_COGS);
     }
 
     // contributors can claim refund if the goal is not reached
@@ -122,7 +82,7 @@ contract AgiCrowdsale is Ownable, ReentrancyGuard {
     }
 
     //in case of endTime before the reach of the cap, the owner can claim the unsold tokens
-    function claimUnsold() onlyOwner {
+    function claimUnsold() onlyOwner  public {
         require(endTime <= getBlockTimestamp());
         uint256 unsold = token.balanceOf(this);
 
@@ -139,14 +99,14 @@ contract AgiCrowdsale is Ownable, ReentrancyGuard {
         }
     }
 
-    function finalize() onlyOwner {
+    function finalize() onlyOwner  public {
         require(!isFinalized);
         require(hasEnded());
 
         if (goalReached()) {
             //Close the vault
             vault.close();
-            //Unpause the token 
+            //Unpause the token
             token.unpause();
         } else {
             //else enable refunds
@@ -156,11 +116,6 @@ contract AgiCrowdsale is Ownable, ReentrancyGuard {
         isFinalized = true;
         //trigger and emit the event of finalization
         Finalized();
-    } 
-
-    // send ether to the fund collection wallet, the vault in this case
-    function forwardFunds() internal {
-        vault.deposit.value(msg.value)(msg.sender);
     }
 
     // @return true if crowdsale event has ended or cap reached
@@ -178,6 +133,54 @@ contract AgiCrowdsale is Ownable, ReentrancyGuard {
         return whitelist[contributor];
     }
 
+    //low level function to buy tokens
+    function buyTokens(address beneficiary) internal {
+        require(beneficiary != 0x0);
+        require(whitelist[beneficiary]);
+        require(validPurchase());
+
+        //derive amount in wei to buy
+        uint256 weiAmount = msg.value;
+        //check if there is enough funds
+        uint256 remainingToFund = cap.sub(weiRaised);
+        if (weiAmount > remainingToFund) {
+            weiAmount = remainingToFund;
+        }
+        uint256 weiToReturn = msg.value.sub(weiAmount);
+        //derive how many tokens
+        uint256 tokens = getTokens(weiAmount);
+        //update the state of weiRaised
+        weiRaised = weiRaised.add(weiAmount);
+
+       //Forward funs to the vault
+        forwardFunds();
+        //refund if the contribution exceed the cap
+        if (weiToReturn > 0) {
+            beneficiary.transfer(weiToReturn);
+            TokenRefund(beneficiary, weiToReturn);
+        }
+
+
+        //Trigger the event of TokenPurchase
+        TokenPurchase(
+            msg.sender,
+            beneficiary,
+            weiAmount,
+            tokens
+        );
+        token.transferTokens(beneficiary,tokens);
+
+    }
+
+    function getTokens(uint256 amount) internal constant returns (uint256) {
+        return amount.mul(rate).div(WEI_TO_COGS);
+    }
+
+    // send ether to the fund collection wallet, the vault in this case
+    function forwardFunds() internal {
+        vault.deposit.value(msg.value)(msg.sender);
+    }
+
     // @return true if the transaction can buy tokens
     function validPurchase() internal constant returns (bool) {
         bool withinPeriod = getBlockTimestamp() >= startTime && getBlockTimestamp() <= endTime;
@@ -189,4 +192,5 @@ contract AgiCrowdsale is Ownable, ReentrancyGuard {
     function getBlockTimestamp() internal constant returns (uint256) {
         return block.timestamp;
     }
+
 }

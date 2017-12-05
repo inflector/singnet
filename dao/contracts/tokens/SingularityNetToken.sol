@@ -29,26 +29,26 @@ contract SingularityNetToken is PausableToken, BurnableToken {
     uint256 public constant INITIAL_SUPPLY = 1000000000 * 10**uint256(DECIMALS);
 
     uint256 public constant PRIVATE_SUPPLY =  200000000 * 10**uint256(DECIMALS);
-    uint256 public constant ADVISORS_SUPPLY = 100000000 * 10**uint256(DECIMALS); 
+    uint256 public constant ADVISORS_SUPPLY = 100000000 * 10**uint256(DECIMALS);
     uint256 public constant PUBLIC_SUPPLY  =  700000000 * 10**uint256(DECIMALS);
-    
+
     /**
     * @dev SingularityNetToken Constructor
     */
 
-    function SingularityNetToken() {
-        totalSupply = INITIAL_SUPPLY;   
+    function SingularityNetToken()  public {
+        totalSupply = INITIAL_SUPPLY;
         balances[msg.sender] = INITIAL_SUPPLY;
     }
 
-    function setOwnership(address _owner) onlyOwner {
+    function setOwnership(address _owner) onlyOwner public {
         pause();
         balances[owner] = INITIAL_SUPPLY.sub(PUBLIC_SUPPLY);
         owner = _owner;
         balances[owner] = PUBLIC_SUPPLY;
-    } 
+    }
 
-    function transferTokens(address beneficiary, uint256 amount) onlyOwner returns (bool) {
+    function transferTokens(address beneficiary, uint256 amount) onlyOwner public returns (bool) {
         require(amount > 0);
 
         balances[owner] = balances[owner].sub(amount);
